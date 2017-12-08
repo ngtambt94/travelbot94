@@ -18,18 +18,24 @@ var conn = mysql.createConnection({
 // messenger facebook
 'use strict'
 
+const logger = require('morgan');
+const http = require('http');
 const express = require('express')
 const bodyParser = require('body-parser')
 const request = require('request')
 const app = express()
 
-app.set('port', (process.env.PORT || 5000))
+app.use(logger('dev'));
+
+app.set('port', (process.env.PORT || 8080))
 
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({extended: false}))
 
 // parse application/json
 app.use(bodyParser.json())
+
+var server = http.createServer(app);
 
 // index
 app.get('/', function (req, res) {
@@ -47,7 +53,7 @@ app.get('/webhook/', function (req, res) {
 
 // recommended to inject access tokens as environmental variables, e.g.
 // const token = process.env.FB_PAGE_ACCESS_TOKEN
-const token = "EAABwygPtwy4BAPaOdoKNANZB9G3YZBmZAKclAWiZBXhZBy0J0ZCZBeRZAnyFi2ylRsPk4zcDw2UMrx1PrX3ysqvdORDJfaI6D60iwiujeiFU7CfTuykvi01YmpNu0mZChFpwphs5NcSnuvgNmiebxQzKN1EKoKQoXI7W2irkFzf9RE2XceCPvKAK3"
+const token = "EAAVV3f7r14EBAFnIdIky6ZCLHqLcUDiBHzoyPAGBhu8ZC5EQHgHZBZBi45JFgtiZBixZCpROzahl3fCjWBcAj9ZAiqRNVZBhdDQBHlWZB4df3sZCRouE2IPF7rduVNTDYOp5nKvFKfCcr4s07d96PAMR534l76ZBmVkElLf0tKLBkA8TAZDZD"
 
 // bot reply when page has message
 function sendTextMessage(sender, text) {
@@ -70,87 +76,6 @@ function sendTextMessage(sender, text) {
 	})
 }
 
-// send image
-function sendImageMessage(sender){
-	let a = "https://raw.githubusercontent.com/ngtambt94/TravelBot/master/source/img/02.jpg";
-	let messageData = {
-		"attachment": {
-			"type": "image",
-			"payload": {
-				"url": a
-			}
-		}
-	}
-	request({
-		url: 'https://graph.facebook.com/v2.6/me/messages',
-		qs: {access_token:token},
-		method: 'POST',
-		json: {
-			recipient: {id:sender},
-			message: messageData,
-		}
-	}, function(error, response, body) {
-		if (error) {
-			console.log('Error sending messages: ', error)
-		} else if (response.body.error) {
-			console.log('Error: ', response.body.error)
-		}
-	}) 
-}
-
-// send audio
-function sendAudioMessage(sender){
-	let messageData = {
-		"attachment": {
-			"type": "audio",
-			"payload": {
-				"url": "https://mp3.zing.vn/bai-hat/Em-Gai-Mua-Huong-Tram/ZW8IZECW.html"
-			}
-		}
-	}
-	request({
-		url: 'https://graph.facebook.com/v2.6/me/messages',
-		qs: {access_token:token},
-		method: 'POST',
-		json: {
-			recipient: {id:sender},
-			message: messageData,
-		}
-	}, function(error, response, body) {
-		if (error) {
-			console.log('Error sending messages: ', error)
-		} else if (response.body.error) {
-			console.log('Error: ', response.body.error)
-		}
-	}) 
-}
-
-// send video
-function sendVideoMessage(sender){
-	let messageData = {
-		"attachment": {
-			"type": "video",
-			"payload": {
-				"url": "https://www.youtube.com/embed/I3u09JnVKTU"
-			}
-		}
-	}
-	request({
-		url: 'https://graph.facebook.com/v2.6/me/messages',
-		qs: {access_token:token},
-		method: 'POST',
-		json: {
-			recipient: {id:sender},
-			message: messageData,
-		}
-	}, function(error, response, body) {
-		if (error) {
-			console.log('Error sending messages: ', error)
-		} else if (response.body.error) {
-			console.log('Error: ', response.body.error)
-		}
-	}) 
-}
 
 // hiển thị dữ liệu từ bot
 function findInfo(sender, answer) {
@@ -198,60 +123,77 @@ function findInfo(sender, answer) {
 					sendTextMessage(sender, answer);
 			}
 			else if (results[0]['food_hinhanh'] === undefined) {
-				sendTextMessage(sender, results[0]['food_ten']);
+				// sendTextMessage(sender, results[0]['food_ten']);
 				sendTextMessage(sender, results[0]['food_diachi']);
 			}
 			else{
 				sendTextMessage(sender, ";) Đây là kết quả có thể bạn quan tâm: ");
 
-		        // khai báo mảng chứa lưu kết quả trả về
-		        var ketqua = [];
+		    // khai báo mảng chứa lưu kết quả trả về
+		    var ketqua = [];
 
-		        // thêm từng phần tử vào mảng kết quả
-		        for (var i = 0; i < results.length; i++) {
-		        	var temp_kq = "";
-		        	for (var j = 0; j < results[i]['food_ten'].length; j++) {
-		        		temp_kq += Convert(results[i]['food_ten'][j]);
-		        	}
-		        	ketqua.push(
-		        	{
-		        		"title": results[i]['food_ten'],
-		        		"subtitle": results[i]['food_diachi'],
-		        		"image_url": "https://raw.githubusercontent.com/ngtambt94/TravelBot/master/source/img/" + results[i]['food_hinhanh'],
-		        		"buttons": [{
-		        			"title": "Xem Chi Tiết",
-		        			"type": "postback",
-		        			"payload": temp_kq
-		        		}],
-		        	}
-		        	);
-		        }
-		        let messageData = {
-		        	"attachment": {
-		        		"type": "template",
-		        		"payload": {
-		        			"template_type": "generic",
-		        			"elements": ketqua,
-		        		}
-		        	}
-		        }
-		        request({
-		        	url: 'https://graph.facebook.com/v2.6/me/messages',
-		        	qs: {access_token:token},
-		        	method: 'POST',
-		        	json: {
-		        		recipient: {id:sender},
-		        		message: messageData,
-		        	}
-		        }, function(error, response, body) {
-		        	if (error) {
-		        		console.log('Error sending messages: ', error)
-		        	} else if (response.body.error) {
-		        		console.log('Error: ', response.body.error)
-		        	}
-		        })
-    		}
-		});
+		    // thêm từng phần tử vào mảng
+		    for (var i = 0; i < results.length; i++) {
+		    	var temp_kq = "";
+		    	for (var j = 0; j < results[i]['food_ten'].length; j++) {
+		    		temp_kq += Convert(results[i]['food_ten'][j]);
+		    	}
+		    	if (results[i]['web'] === undefined || results[i]['web'] === "") {
+		    		ketqua.push(
+		    		{
+		    			"title": results[i]['food_ten'],
+		    			"subtitle": results[i]['food_diachi'],
+		    			"image_url": "hottps://raw.githubusercontent.com/ngtambt94/TravelBot/master/source/img/" + results[i]['food_hinhanh'],
+		    			"buttons": [{
+		    				"title": "Xem Chi Tiết",
+		    				"type": "postback",
+		    				"payload": temp_kq
+		    			}],
+		    		}
+		    		);
+		    	}
+		    	else{
+		    		ketqua.push(
+		    		{
+		    			"title": results[i]['food_ten'],
+		    			"subtitle": results[i]['food_diachi'],
+		    			"image_url": "https://raw.githubusercontent.com/ngtambt94/TravelBot/master/source/img/" + results[i]['food_hinhanh'],
+		    			"buttons": [{
+		    				"title": "Xem Chi Tiết",
+		    				"type": "web_url",
+		    				"url": results[i]['web']
+		    			}],
+		    		}
+		    		);
+		    	}
+		    }
+
+		    let messageData = {
+		    	"attachment": {
+		    		"type": "template",
+		    		"payload": {
+		    			"template_type": "generic",
+		    			"elements": ketqua,
+		    		}
+		    	}
+		    }
+		    request({
+		    	url: 'https://graph.facebook.com/v2.6/me/messages',
+		    	qs: {access_token:token},
+		    	method: 'POST',
+		    	json: {
+		    		recipient: {id:sender},
+		    		message: messageData,
+		    	}
+		    }, function(error, response, body) {
+		    	if (error) {
+		    		console.log('Error sending messages: ', error)
+		    	} else if (response.body.error) {
+		    		console.log('Error: ', response.body.error)
+		    	}
+		    })
+		}
+	});
 	});
 }
 
@@ -749,17 +691,17 @@ function MonAn(sender) {
 				{
 					"type": "postback",
 					"title": "Bến Tre",
-					"payload": "Mon an o Ben Tre"
+					"payload": "Mon an Ben Tre"
 				},
 				{
 					"type": "postback",
 					"title": "Cần Thơ",
-					"payload": "Mon an o Can Tho"
+					"payload": "Mon an Can Tho"
 				},
 				{
 					"type": "postback",
 					"title": "Đà Lạt",
-					"payload": "Mon an o Da Lat"
+					"payload": "Mon an Da Lat"
 				}
 				]
 			}
@@ -888,7 +830,7 @@ function LuaChon(sender, sql) {
 		{
 			"title": "Quà tặng",
 			"subtitle": "Thông tin về các quà tặng nên mua về",
-			"image_url": "https://raw.githubusercontent.com/ngtambt94/TravelBot/master/source/img/rm.jpg",
+			"image_url": "https://raw.githubusercontent.com/ngtambt94/TravelBot/master/source/img/rm.png",
 			"buttons": [{
 				"type": "postback",
 				"title": "Chi Tiết",
@@ -1024,7 +966,7 @@ app.post('/webhook', function (req, res) {
       		sendTextMessage(sender, "Bên mình chưa có dữ liệu :P");
       	}       
       	else{
-      		sendTextMessage(sender, "Mình hỏng hiểu :P Nhập help đi nè ;)");
+      		sendTextMessage(sender, text+" là gì dạ mình hỏng hiểu. Nhập help đi nè :P");
       	}
       };
 
@@ -1047,5 +989,5 @@ res.sendStatus(200)
 
 // spin spin sugar
 app.listen(app.get('port'), function() {
-	console.log('running on port', app.get('port'))
+	console.log('Tam Nguyen\'s Chatbot is listening at', app.get('port'))
 })
